@@ -1,4 +1,4 @@
-# market_cycle_monitor v0.2.3
+# market_cycle_monitor v0.2.4
 
 Private React frontend for live US equity monitoring.
 
@@ -50,4 +50,13 @@ No credentials, symbols, SMTP configuration, passwords or access tokens belong i
 - Reads the invitation token without mutating the URL during the React state initializer.
 - Removes the token fragment only after the component has captured it and started validation.
 - Keeps the manual token field as a fallback when a link is invalid or expired.
+- The API remains v0.2.0; no endpoint, email format or MongoDB schema changed.
+
+
+## v0.2.4
+
+- Keeps the standard request timeout at 20 seconds.
+- Uses a dedicated 60-second timeout only when creating invitations or resending invitation email tokens.
+- Prevents the frontend from aborting invitation email operations too early on Railway.
+- Preserves the 1-hour default invitation duration and invitation-link automatic login behavior.
 - The API remains v0.2.0; no endpoint, email format or MongoDB schema changed.
