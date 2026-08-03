@@ -88,13 +88,13 @@ export function LoginPage({ onAuthenticated }) {
           <div>
             <span>PRIVATE MARKET DATA</span>
             <h1>Market Cycle Monitor</h1>
-            <p>Administrators use the private password. Invited viewers use the temporary token received by email.</p>
+            <p>Administrators use the private password. Viewers open a temporary access link shared by an administrator.</p>
           </div>
         </div>
 
         <div className="login-mode-tabs" role="tablist" aria-label="Access type">
           <button type="button" className={mode === 'viewer' ? 'active' : ''} onClick={() => { setMode('viewer'); setError('') }}>
-            <Icon name="key" size={17} /> Viewer token
+            <Icon name="key" size={17} /> Viewer access
           </button>
           <button type="button" className={mode === 'admin' ? 'active' : ''} onClick={() => { setMode('admin'); setError('') }}>
             <Icon name="shield" size={17} /> Administrator
@@ -147,7 +147,7 @@ export function LoginPage({ onAuthenticated }) {
         </form>
 
         <small className="login-note">
-          The password or invitation token is exchanged for a secure HttpOnly session cookie. It is never stored in browser storage.
+          The password or temporary access token is exchanged for a secure HttpOnly session cookie. It is never stored in browser storage.
         </small>
       </section>
     </main>
