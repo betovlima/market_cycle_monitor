@@ -49,11 +49,17 @@ export function MonitorApp({ onLogout, onSessionExpired }) {
     if (!silent) setLoading(true)
     try {
       const response = await apiFetch('/api/market/overview')
+      if (!response || !Array.isArray(response.items) || !response.market || !response.summary) {
+        throw new ApiError(
+          'The monitor API returned an unexpected overview response.',
+          502,
+        )
+      }
       setOverview(response)
       setError('')
       setSelectedSymbol((current) => {
-        if (current && response.items?.some((item) => item.symbol === current)) return current
-        return response.items?.[0]?.symbol || ''
+        if (current && response.items.some((item) => item.symbol === current)) return current
+        return response.items[0]?.symbol || ''
       })
     } catch (requestError) {
       handleApiError(requestError)
@@ -127,6 +133,7 @@ export function MonitorApp({ onLogout, onSessionExpired }) {
         onTabChange={setActiveTab}
         onLogout={onLogout}
         nextRefreshSeconds={nextRefreshSeconds}
+        now={now}
         overview={overview}
       />
 
@@ -166,7 +173,7 @@ export function MonitorApp({ onLogout, onSessionExpired }) {
   )
 }
 
-function MonitorHeader({ activeTab, onTabChange, onLogout, nextRefreshSeconds, overview }) {
+function MonitorHeader({ activeTab, onTabChange, onLogout, nextRefreshSeconds, now, overview }) {
   const tabs = [
     ['overview', 'grid', 'Overview'],
     ['charts', 'chart', 'Live Charts'],
@@ -196,6 +203,19 @@ function MonitorHeader({ activeTab, onTabChange, onLogout, nextRefreshSeconds, o
       </nav>
 
       <div className="monitor-actions">
+        <HeaderClock
+          icon="globe"
+          label="Local Time"
+          now={now}
+          helper="Device time"
+        />
+        <HeaderClock
+          icon="building"
+          label="New York Market"
+          now={now}
+          timeZone="America/New_York"
+          helper="Eastern Time"
+        />
         <span className="status-pill private"><Icon name="lock" size={15} />Private Session</span>
         <span className="status-pill connected"><Icon name="link" size={15} />API Connected</span>
         <span className="status-pill countdown"><Icon name="clock" size={15} />Next update {formatClockDuration(nextRefreshSeconds)}</span>
@@ -204,6 +224,34 @@ function MonitorHeader({ activeTab, onTabChange, onLogout, nextRefreshSeconds, o
         </button>
       </div>
     </header>
+  )
+}
+
+
+function HeaderClock({ icon, label, now, timeZone, helper }) {
+  const date = new Date(now)
+  const timeOptions = {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+    ...(timeZone ? { timeZone } : {}),
+  }
+  const dateOptions = {
+    month: 'short',
+    day: 'numeric',
+    ...(timeZone ? { timeZone } : {}),
+  }
+
+  return (
+    <div className="header-clock" aria-label={`${label}: ${new Intl.DateTimeFormat('en-US', timeOptions).format(date)}`}>
+      <div className="header-clock-icon"><Icon name={icon} size={18} /></div>
+      <div className="header-clock-copy">
+        <span>{label}</span>
+        <strong>{new Intl.DateTimeFormat('en-US', timeOptions).format(date)}</strong>
+        <small>{helper} · {new Intl.DateTimeFormat('en-US', dateOptions).format(date)}</small>
+      </div>
+    </div>
   )
 }
 
@@ -221,11 +269,14 @@ function OverviewPage({
   const summary = overview.summary
   const marketCountdown = market.is_open ? market.seconds_to_close : market.seconds_to_open
   const marketCountdownLabel = market.is_open ? 'Time to close' : 'Time to open'
+  const marketStatus = market.is_open
+    ? { icon: 'building', value: 'Open', tone: 'green' }
+    : { icon: 'lock', value: 'Closed', tone: 'red' }
 
   return (
     <div className="overview-stack">
       <section className="metrics-grid five-columns">
-        <MetricCard icon="building" label="Market Status" value={market.is_open ? 'Open' : 'Closed'} helper={market.session_label} tone="green" />
+        <MetricCard icon={marketStatus.icon} label="Market Status" value={marketStatus.value} helper={market.session_label} tone={marketStatus.tone} />
         <MetricCard icon="pie" label="Monitored Assets" value={summary.monitored_assets} helper="Private watchlist" tone="blue" />
         <MetricCard icon="up" label="Advancers" value={summary.advancers} helper={`${percentageOf(summary.advancers, summary.monitored_assets)} of assets`} tone="green" />
         <MetricCard icon="down" label="Decliners" value={summary.decliners} helper={`${percentageOf(summary.decliners, summary.monitored_assets)} of assets`} tone="red" />
@@ -241,7 +292,7 @@ function OverviewPage({
             </div>
             <div className="chart-controls">
               <select value={selectedSymbol} onChange={(event) => onSelectSymbol(event.target.value)} aria-label="Select asset">
-                {overview.items.map((item) => <option key={item.symbol} value={item.symbol}>{item.symbol}</option>)}
+                {(overview.items || []).map((item) => <option key={item.symbol} value={item.symbol}>{item.symbol}</option>)}
               </select>
               <div className="range-tabs" aria-label="Chart range">
                 {RANGE_OPTIONS.map(([id, label]) => (
@@ -278,7 +329,7 @@ function OverviewPage({
             <span className="feed-badge">{String(overview.feed).toUpperCase()}</span>
           </div>
           <div className="watchlist-grid">
-            {overview.items.map((item) => (
+            {(overview.items || []).map((item) => (
               <button key={item.symbol} type="button" className={`watch-card ${item.symbol === selectedSymbol ? 'selected' : ''}`} onClick={() => onSelectSymbol(item.symbol)}>
                 <div className="watch-card-heading">
                   <strong>{item.symbol}</strong>
@@ -312,7 +363,7 @@ function LiveChartsPage({ overview }) {
         <div><h2>Live Charts</h2><p>Intraday evolution for every asset in the private watchlist.</p></div>
       </div>
       <section className="live-charts-grid">
-        {overview.items.map((item) => (
+        {(overview.items || []).map((item) => (
           <article className="panel asset-chart-card" key={item.symbol}>
             <div className="asset-chart-heading">
               <div><strong>{item.symbol}</strong><span>{formatMoney(item.price)}</span></div>
@@ -348,7 +399,7 @@ function MarketStatusPage({ overview }) {
           <table className="market-table">
             <thead><tr><th>Asset</th><th>Price</th><th>Change</th><th>Open</th><th>High</th><th>Low</th><th>Volume</th><th>Updated</th></tr></thead>
             <tbody>
-              {overview.items.map((item) => (
+              {(overview.items || []).map((item) => (
                 <tr key={item.symbol}>
                   <td><strong>{item.symbol}</strong></td>
                   <td>{formatMoney(item.price)}</td>
