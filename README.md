@@ -1,4 +1,4 @@
-# market_cycle_monitor v0.3.0
+# market_cycle_monitor v0.3.1
 
 Private React frontend for live US equity monitoring.
 
@@ -40,3 +40,11 @@ No credentials, symbols, email configuration, passwords or access tokens belong 
 - Removes the email-specific 60-second frontend timeout.
 - Keeps the 1-hour default duration and automatic Viewer login from access links.
 - Requires Market Cycle Monitor API v0.3.0.
+
+
+## v0.3.1
+
+- Adds a conventional `/favicon.ico` for browser-tab compatibility.
+- Adds 32x32, 192x192 and 512x512 PNG icon variants.
+- Keeps the SVG icon as a modern-browser fallback.
+- Adds versioned icon URLs to force browsers and CDNs to refresh cached favicons.
