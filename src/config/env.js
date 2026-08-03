@@ -1,7 +1,7 @@
 const rawApiBaseUrl = String(import.meta.env.VITE_MONITOR_API_BASE_URL || '').trim()
 
 export const API_BASE_URL = rawApiBaseUrl.replace(/\/+$/, '')
-export const APP_VERSION = '0.3.0'
+export const APP_VERSION = '0.3.1'
 
 export function apiUrl(path) {
   if (!API_BASE_URL) {
