@@ -1,64 +1,53 @@
-# market_cycle_monitor
+# market_cycle_monitor v0.2.3
 
-Private React frontend for live US equity monitoring. The browser talks only to `market_cycle_monitor_api`; Alpaca credentials and the private watchlist never exist in this repository.
+Private React frontend for live US equity monitoring.
 
-## Version
+## Access
 
-`0.1.1`
+The login screen remains the single entry point and now has two modes:
 
-## Features
+- `Viewer token`: temporary token received by email.
+- `Administrator`: existing private administrator password.
 
-- private login backed by an HttpOnly API session;
-- market overview refreshed every 20 seconds;
-- main intraday chart with 1D, 5D, 1M, 3M and 1Y ranges;
-- private watchlist cards and live chart grid;
-- market session, next open/close and provider status;
-- no Alpaca key, API token, watchlist or strategy parameters in frontend source or browser storage.
+Both roles can view the complete monitor. Only `ADMIN` sees the protected Administration tab.
 
-## Local development
+The Administration tab creates Viewer invitations, selects the access duration, resends or rotates tokens, extends or revokes access, terminates Viewer sessions, deletes inactive invitations, and displays access history.
 
-```bash
-cp .env.example .env
-pnpm install
-pnpm dev
-```
-
-Set:
-
-```env
-VITE_MONITOR_API_BASE_URL=http://localhost:8001
-```
-
-The API must allow `http://localhost:5173` in `MONITOR_ALLOWED_ORIGINS` and use local cookies with:
-
-```env
-MONITOR_COOKIE_SECURE=false
-MONITOR_COOKIE_SAMESITE=lax
-```
+The browser stores neither passwords nor invitation tokens. Authentication is maintained by the API through a Secure HttpOnly cookie.
 
 ## Railway
 
-Configure `VITE_MONITOR_API_BASE_URL` with the HTTPS domain of `market_cycle_monitor_api`, without a trailing slash. This variable is read at build time, so redeploy the frontend after changing it. The production API should use a Secure HttpOnly cookie. If the frontend and API are cross-site, configure `MONITOR_COOKIE_SAMESITE=none` and `MONITOR_COOKIE_SECURE=true` in the API.
+The only frontend variable remains:
 
-## Security
+`VITE_MONITOR_API_BASE_URL=https://<market-cycle-monitor-api-domain>`
 
-Do not create any `VITE_*` variable containing Alpaca credentials, monitor passwords, session secrets or private symbols. Vite variables are public build-time values.
+No credentials, symbols, SMTP configuration, passwords or access tokens belong in this repository.
 
 
-## Railway API URL validation
+## v0.2.1
 
-Version 0.1.1 rejects missing API configuration and non-JSON responses instead of allowing the dashboard to fail with a null-data rendering error.
+- Removes the implicit seven-day default from invitation creation.
+- Requires the administrator to choose the access duration explicitly.
+- Removes the implicit seven-day default from invitation extension.
+- Clears duration selections after successful operations.
+- Refreshes the invitation list when email delivery fails after persistence.
+- The API remains v0.2.0; `expires_at` continues to be the authoritative expiration value.
 
-Required frontend variable:
 
-```env
-VITE_MONITOR_API_BASE_URL=https://<market-cycle-monitor-api-domain>
-```
+## v0.2.2
 
-After setting or changing the variable, redeploy the frontend because Vite embeds `VITE_*` values during the build.
+- Uses 1 hour as the default invitation duration.
+- Restores the creation form to 1 hour after each successful invitation.
+- Uses +1 hour as the default renewal duration for every invitation row.
+- Resend now renews `expires_at` from the current time using the selected duration before rotating and sending the token.
+- Administrators can still choose any other supported duration before Create, Extend or Resend.
+- The API remains v0.2.0; no endpoint or persistence schema changed.
 
-## Version 0.1.2
 
-- Dual live clocks for the browser local time and the New York market time.
-- Automatic daylight-saving handling through the `America/New_York` IANA time zone.
-- Distinct market status presentation: green market icon when open and red lock icon when closed.
+## v0.2.3
+
+- Fixes automatic Viewer authentication from invitation links during local React StrictMode development.
+- Reads the invitation token without mutating the URL during the React state initializer.
+- Removes the token fragment only after the component has captured it and started validation.
+- Keeps the manual token field as a fallback when a link is invalid or expired.
+- The API remains v0.2.0; no endpoint, email format or MongoDB schema changed.

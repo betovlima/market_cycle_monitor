@@ -35,6 +35,8 @@ export async function apiFetch(path, options = {}) {
           : options.body,
     })
 
+    if (response.status === 204) return null
+
     const contentType = response.headers.get('content-type') || ''
     const isJson = contentType.toLowerCase().includes('application/json')
     const payload = isJson ? await response.json() : null

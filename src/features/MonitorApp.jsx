@@ -12,6 +12,7 @@ import {
 import { Icon, MonitorMark } from '../components/Icon'
 import { MarketChart } from '../components/MarketChart'
 import { MetricCard } from '../components/MetricCard'
+import { AdministrationPage } from './AdministrationPage'
 import { APP_VERSION } from '../config/env'
 
 const RANGE_OPTIONS = [
@@ -22,7 +23,7 @@ const RANGE_OPTIONS = [
   ['1y', '1Y'],
 ]
 
-export function MonitorApp({ onLogout, onSessionExpired }) {
+export function MonitorApp({ session, onLogout, onSessionExpired }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [overview, setOverview] = useState(null)
   const [selectedSymbol, setSelectedSymbol] = useState('')
@@ -135,6 +136,7 @@ export function MonitorApp({ onLogout, onSessionExpired }) {
         nextRefreshSeconds={nextRefreshSeconds}
         now={now}
         overview={overview}
+        session={session}
       />
 
       {error ? (
@@ -163,6 +165,7 @@ export function MonitorApp({ onLogout, onSessionExpired }) {
         ) : null}
         {overview && activeTab === 'charts' ? <LiveChartsPage overview={overview} /> : null}
         {overview && activeTab === 'status' ? <MarketStatusPage overview={overview} /> : null}
+        {session.role === 'admin' && activeTab === 'admin' ? <AdministrationPage onSessionExpired={onSessionExpired} /> : null}
       </main>
 
       <footer className="monitor-footer">
@@ -173,11 +176,12 @@ export function MonitorApp({ onLogout, onSessionExpired }) {
   )
 }
 
-function MonitorHeader({ activeTab, onTabChange, onLogout, nextRefreshSeconds, now, overview }) {
+function MonitorHeader({ activeTab, onTabChange, onLogout, nextRefreshSeconds, now, overview, session }) {
   const tabs = [
     ['overview', 'grid', 'Overview'],
     ['charts', 'chart', 'Live Charts'],
     ['status', 'status', 'Market Status'],
+    ...(session.role === 'admin' ? [['admin', 'shield', 'Administration']] : []),
   ]
   return (
     <header className="monitor-header">
@@ -216,7 +220,7 @@ function MonitorHeader({ activeTab, onTabChange, onLogout, nextRefreshSeconds, n
           timeZone="America/New_York"
           helper="Eastern Time"
         />
-        <span className="status-pill private"><Icon name="lock" size={15} />Private Session</span>
+        <span className="status-pill private"><Icon name={session.role === 'admin' ? 'shield' : 'eye'} size={15} />{session.role === 'admin' ? 'Administrator' : 'Viewer'}</span>
         <span className="status-pill connected"><Icon name="link" size={15} />API Connected</span>
         <span className="status-pill countdown"><Icon name="clock" size={15} />Next update {formatClockDuration(nextRefreshSeconds)}</span>
         <button type="button" className="logout-button" onClick={onLogout} aria-label="Log out">
