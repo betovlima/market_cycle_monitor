@@ -14,7 +14,6 @@ const DURATION_OPTIONS = [
 ]
 
 const DEFAULT_DURATION_SECONDS = String(DURATION_OPTIONS[0][0])
-const INVITATION_EMAIL_TIMEOUT_MS = 60_000
 
 function dateTime(value) {
   if (!value) return '—'
@@ -23,8 +22,25 @@ function dateTime(value) {
 
 function statusClass(status) {
   if (status === 'active') return 'positive'
-  if (status === 'delivery_failed') return 'warning-text'
   return 'negative'
+}
+
+async function copyText(value) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = value
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  const copied = document.execCommand('copy')
+  textarea.remove()
+  if (!copied) throw new Error('The browser did not allow copying the link.')
 }
 
 export function AdministrationPage({ onSessionExpired }) {
@@ -34,15 +50,16 @@ export function AdministrationPage({ onSessionExpired }) {
   const [busyId, setBusyId] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [form, setForm] = useState({ guest_name: '', email: '', duration_seconds: DEFAULT_DURATION_SECONDS })
+  const [form, setForm] = useState({ guest_name: '', duration_seconds: DEFAULT_DURATION_SECONDS })
   const [extendDurations, setExtendDurations] = useState({})
+  const [generatedAccess, setGeneratedAccess] = useState(null)
 
   const handleError = useCallback((requestError) => {
     if (requestError instanceof ApiError && requestError.status === 401) {
       onSessionExpired()
       return
     }
-    setError(requestError.message || 'Unable to update invitations.')
+    setError(requestError.message || 'Unable to update access control.')
   }, [onSessionExpired])
 
   const loadData = useCallback(async () => {
@@ -78,34 +95,29 @@ export function AdministrationPage({ onSessionExpired }) {
     try {
       const created = await apiFetch('/api/admin/invitations', {
         method: 'POST',
-        timeoutMs: INVITATION_EMAIL_TIMEOUT_MS,
         body: {
           guest_name: form.guest_name.trim(),
-          email: form.email.trim(),
           duration_seconds: Number(form.duration_seconds),
         },
       })
-      setForm({ guest_name: '', email: '', duration_seconds: DEFAULT_DURATION_SECONDS })
-      setNotice(`Invitation sent to ${created.email}.`)
+      setForm({ guest_name: '', duration_seconds: DEFAULT_DURATION_SECONDS })
+      setGeneratedAccess(created)
+      setNotice(`Access link generated for ${created.guest_name}.`)
       await loadData()
     } catch (requestError) {
-      if (requestError instanceof ApiError && requestError.status === 502) {
-        await loadData()
-      }
       handleError(requestError)
     } finally {
       setBusyId('')
     }
   }
 
-  async function runAction(id, action, message, body) {
+  async function runAction(id, action, message) {
     setBusyId(`${id}:${action}`)
     setError('')
     setNotice('')
     try {
       await apiFetch(`/api/admin/invitations/${encodeURIComponent(id)}/${action}`, {
         method: 'POST',
-        ...(body ? { body } : {}),
       })
       setNotice(message)
       await loadData()
@@ -116,29 +128,27 @@ export function AdministrationPage({ onSessionExpired }) {
     }
   }
 
-  async function resendInvitation(invitation) {
+  async function regenerateAccessLink(invitation) {
     const selectedDuration = extendDurations[invitation.id] ?? DEFAULT_DURATION_SECONDS
-    const seconds = Number(selectedDuration)
-    setBusyId(`${invitation.id}:resend`)
+    setBusyId(`${invitation.id}:regenerate-link`)
     setError('')
     setNotice('')
     try {
-      await apiFetch(`/api/admin/invitations/${encodeURIComponent(invitation.id)}`, {
-        method: 'PATCH',
-        body: { duration_seconds: seconds },
-      })
-      await apiFetch(`/api/admin/invitations/${encodeURIComponent(invitation.id)}/resend`, {
-        method: 'POST',
-        timeoutMs: INVITATION_EMAIL_TIMEOUT_MS,
-      })
-      setNotice(`Access renewed and a new token sent to ${invitation.email}.`)
+      const generated = await apiFetch(
+        `/api/admin/invitations/${encodeURIComponent(invitation.id)}/regenerate-link`,
+        {
+          method: 'POST',
+          body: { duration_seconds: Number(selectedDuration) },
+        },
+      )
+      setGeneratedAccess(generated)
+      setNotice(`A new access link was generated for ${invitation.guest_name}.`)
       setExtendDurations((current) => ({
         ...current,
         [invitation.id]: DEFAULT_DURATION_SECONDS,
       }))
       await loadData()
     } catch (requestError) {
-      await loadData()
       handleError(requestError)
     } finally {
       setBusyId('')
@@ -151,16 +161,15 @@ export function AdministrationPage({ onSessionExpired }) {
       setError('Select an extension duration.')
       return
     }
-    const seconds = Number(selectedDuration)
     setBusyId(`${invitation.id}:extend`)
     setError('')
     setNotice('')
     try {
       await apiFetch(`/api/admin/invitations/${encodeURIComponent(invitation.id)}`, {
         method: 'PATCH',
-        body: { duration_seconds: seconds },
+        body: { duration_seconds: Number(selectedDuration) },
       })
-      setNotice(`Access extended for ${invitation.email}.`)
+      setNotice(`Access extended for ${invitation.guest_name}.`)
       setExtendDurations((current) => ({ ...current, [invitation.id]: DEFAULT_DURATION_SECONDS }))
       await loadData()
     } catch (requestError) {
@@ -171,7 +180,7 @@ export function AdministrationPage({ onSessionExpired }) {
   }
 
   async function deleteInvitation(invitation) {
-    if (!window.confirm(`Delete the invitation for ${invitation.email}?`)) return
+    if (!window.confirm(`Delete the access record for ${invitation.guest_name}?`)) return
     setBusyId(`${invitation.id}:delete`)
     setError('')
     setNotice('')
@@ -179,7 +188,7 @@ export function AdministrationPage({ onSessionExpired }) {
       await apiFetch(`/api/admin/invitations/${encodeURIComponent(invitation.id)}`, {
         method: 'DELETE',
       })
-      setNotice(`Invitation deleted for ${invitation.email}.`)
+      setNotice(`Access record deleted for ${invitation.guest_name}.`)
       await loadData()
     } catch (requestError) {
       handleError(requestError)
@@ -198,14 +207,14 @@ export function AdministrationPage({ onSessionExpired }) {
     <div className="page-stack administration-page">
       <div className="page-heading">
         <div className="page-title-icon"><Icon name="shield" size={22} /></div>
-        <div><h2>Administration</h2><p>Create temporary Viewer access and review invitation activity.</p></div>
+        <div><h2>Administration</h2><p>Generate temporary Viewer links and review access activity.</p></div>
       </div>
 
       {error ? <div className="global-inline-message error-inline">{error}</div> : null}
       {notice ? <div className="global-inline-message success-inline">{notice}</div> : null}
 
       <section className="admin-summary-grid">
-        <AdminSummary icon="users" label="Total invitations" value={invitations.length} />
+        <AdminSummary icon="users" label="Access records" value={invitations.length} />
         <AdminSummary icon="link" label="Active" value={counts.active} tone="positive" />
         <AdminSummary icon="clock" label="Expired" value={counts.expired} />
         <AdminSummary icon="lock" label="Revoked" value={counts.revoked} tone="negative" />
@@ -213,17 +222,13 @@ export function AdministrationPage({ onSessionExpired }) {
 
       <section className="panel admin-create-panel">
         <div className="panel-heading">
-          <div><span className="panel-kicker">VIEWER ACCESS</span><h2>Create invitation</h2></div>
+          <div><span className="panel-kicker">VIEWER ACCESS</span><h2>Generate access link</h2></div>
           <span className="admin-readonly-badge"><Icon name="eye" size={14} /> Viewer · read only</span>
         </div>
         <form className="admin-invite-form" onSubmit={createInvitation}>
           <label>
             <span>Guest name</span>
             <input value={form.guest_name} onChange={(event) => setForm({ ...form, guest_name: event.target.value })} maxLength={120} required />
-          </label>
-          <label>
-            <span>Email</span>
-            <input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} maxLength={254} required />
           </label>
           <label>
             <span>Access duration</span>
@@ -236,38 +241,38 @@ export function AdministrationPage({ onSessionExpired }) {
             </select>
           </label>
           <button type="submit" className="admin-primary-button" disabled={busyId === 'create' || !form.duration_seconds}>
-            <Icon name="mail" size={17} />{busyId === 'create' ? 'Sending…' : 'Create and send invitation'}
+            <Icon name="link" size={17} />{busyId === 'create' ? 'Generating…' : 'Generate access link'}
           </button>
         </form>
       </section>
 
       <section className="panel status-table-panel">
-        <div className="panel-heading"><div><span className="panel-kicker">ACCESS CONTROL</span><h2>Invitations</h2></div></div>
+        <div className="panel-heading"><div><span className="panel-kicker">ACCESS CONTROL</span><h2>Temporary access</h2></div></div>
         {loading ? <div className="admin-loading"><span className="loading-ring" />Loading administration…</div> : (
           <div className="table-scroll">
             <table className="market-table admin-table">
-              <thead><tr><th>Guest</th><th>Role</th><th>Status</th><th>Expires</th><th>Last access</th><th>Delivery</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Guest</th><th>Role</th><th>Status</th><th>Expires</th><th>Last access</th><th>Actions</th></tr></thead>
               <tbody>
-                {invitations.length === 0 ? <tr><td colSpan="7" className="empty-table-cell">No invitations created.</td></tr> : invitations.map((item) => (
+                {invitations.length === 0 ? <tr><td colSpan="6" className="empty-table-cell">No access links generated.</td></tr> : invitations.map((item) => (
                   <tr key={item.id}>
-                    <td><strong>{item.guest_name}</strong><small>{item.email}</small></td>
+                    <td><strong>{item.guest_name}</strong></td>
                     <td>Viewer</td>
                     <td><span className={`admin-status ${statusClass(item.status)}`}>{item.status.replace('_', ' ')}</span></td>
                     <td>{dateTime(item.expires_at)}</td>
                     <td>{dateTime(item.last_access_at)}</td>
-                    <td>{item.delivery_status}</td>
                     <td>
                       <div className="admin-row-actions">
                         <button
                           type="button"
-                          title="Renew access using the selected duration and send a new token."
-                          onClick={() => resendInvitation(item)}
+                          title="Rotate the token, set a new duration and show a new one-time access link."
+                          onClick={() => regenerateAccessLink(item)}
                           disabled={busyId || item.status === 'revoked'}
-                        >Resend</button>
+                        >Generate new link</button>
                         <select
                           value={extendDurations[item.id] ?? DEFAULT_DURATION_SECONDS}
                           onChange={(event) => setExtendDurations({ ...extendDurations, [item.id]: event.target.value })}
                           disabled={item.status === 'revoked'}
+                          aria-label={`Duration for ${item.guest_name}`}
                         >
                           {DURATION_OPTIONS.map(([value, label]) => <option key={value} value={value}>+{label}</option>)}
                         </select>
@@ -276,8 +281,8 @@ export function AdministrationPage({ onSessionExpired }) {
                           onClick={() => extendInvitation(item)}
                           disabled={busyId || item.status === 'revoked'}
                         >Extend</button>
-                        <button type="button" onClick={() => runAction(item.id, 'terminate-sessions', `Viewer sessions terminated for ${item.email}.`)} disabled={busyId}>End sessions</button>
-                        <button type="button" className="danger" onClick={() => runAction(item.id, 'revoke', `Access revoked for ${item.email}.`)} disabled={busyId || item.status === 'revoked'}>Revoke</button>
+                        <button type="button" onClick={() => runAction(item.id, 'terminate-sessions', `Viewer sessions terminated for ${item.guest_name}.`)} disabled={busyId}>End sessions</button>
+                        <button type="button" className="danger" onClick={() => runAction(item.id, 'revoke', `Access revoked for ${item.guest_name}.`)} disabled={busyId || item.status === 'revoked'}>Revoke</button>
                         <button type="button" className="danger ghost" onClick={() => deleteInvitation(item)} disabled={busyId || item.status === 'active'}>Delete</button>
                       </div>
                     </td>
@@ -293,13 +298,13 @@ export function AdministrationPage({ onSessionExpired }) {
         <div className="panel-heading"><div><span className="panel-kicker">AUDIT</span><h2>Access history</h2></div></div>
         <div className="table-scroll">
           <table className="market-table access-log-table">
-            <thead><tr><th>Time</th><th>Event</th><th>Email</th><th>Role</th><th>Result</th><th>Client</th></tr></thead>
+            <thead><tr><th>Time</th><th>Event</th><th>Guest</th><th>Role</th><th>Result</th><th>Client</th></tr></thead>
             <tbody>
               {logs.length === 0 ? <tr><td colSpan="6" className="empty-table-cell">No access events recorded.</td></tr> : logs.map((item) => (
                 <tr key={item.id}>
                   <td>{dateTime(item.created_at)}</td>
                   <td>{item.event.replaceAll('_', ' ')}</td>
-                  <td>{item.email || '—'}</td>
+                  <td>{item.guest_name || '—'}</td>
                   <td>{item.role || '—'}</td>
                   <td className={item.success ? 'positive' : 'negative'}>{item.success ? 'Success' : 'Denied'}</td>
                   <td>{item.client_ip}</td>
@@ -307,6 +312,60 @@ export function AdministrationPage({ onSessionExpired }) {
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {generatedAccess ? (
+        <AccessLinkDialog
+          access={generatedAccess}
+          onClose={() => setGeneratedAccess(null)}
+          onError={(message) => setError(message)}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function AccessLinkDialog({ access, onClose, onError }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copyLink() {
+    try {
+      await copyText(access.access_url)
+      setCopied(true)
+      onError('')
+    } catch (copyError) {
+      setCopied(false)
+      onError(copyError.message || 'Unable to copy the access link.')
+    }
+  }
+
+  return (
+    <div className="access-link-dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="access-link-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="access-link-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="access-link-dialog-heading">
+          <div>
+            <span className="panel-kicker">ONE-TIME DISPLAY</span>
+            <h2 id="access-link-title">Access link for {access.guest_name}</h2>
+          </div>
+          <button type="button" className="access-link-close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <p>
+          Copy this link now and share it directly with the guest. The raw token is not stored and this link cannot be recovered after closing this window.
+        </p>
+        <textarea readOnly value={access.access_url} rows="4" aria-label="Generated access link" />
+        <div className="access-link-expiration">Expires: <strong>{dateTime(access.expires_at)}</strong></div>
+        <div className="access-link-dialog-actions">
+          <button type="button" className="admin-primary-button" onClick={copyLink}>
+            <Icon name="link" size={17} />{copied ? 'Link copied' : 'Copy access link'}
+          </button>
+          <button type="button" className="access-link-secondary" onClick={onClose}>Close</button>
         </div>
       </section>
     </div>
