@@ -68,16 +68,13 @@ export function AdministrationPage({ onSessionExpired }) {
 
   async function createInvitation(event) {
     event.preventDefault()
-
     if (!form.duration_seconds) {
       setError('Select an access duration.')
       return
     }
-
     setBusyId('create')
     setError('')
     setNotice('')
-
     try {
       const created = await apiFetch('/api/admin/invitations', {
         method: 'POST',
@@ -88,20 +85,13 @@ export function AdministrationPage({ onSessionExpired }) {
           duration_seconds: Number(form.duration_seconds),
         },
       })
-
-      setForm({
-        guest_name: '',
-        email: '',
-        duration_seconds: DEFAULT_DURATION_SECONDS,
-      })
-
+      setForm({ guest_name: '', email: '', duration_seconds: DEFAULT_DURATION_SECONDS })
       setNotice(`Invitation sent to ${created.email}.`)
       await loadData()
     } catch (requestError) {
       if (requestError instanceof ApiError && requestError.status === 502) {
         await loadData()
       }
-
       handleError(requestError)
     } finally {
       setBusyId('')
@@ -139,6 +129,7 @@ export function AdministrationPage({ onSessionExpired }) {
       })
       await apiFetch(`/api/admin/invitations/${encodeURIComponent(invitation.id)}/resend`, {
         method: 'POST',
+        timeoutMs: INVITATION_EMAIL_TIMEOUT_MS,
       })
       setNotice(`Access renewed and a new token sent to ${invitation.email}.`)
       setExtendDurations((current) => ({
