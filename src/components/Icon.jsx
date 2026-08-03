@@ -12,6 +12,8 @@ function IconShape({ name }) {
       return <><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></>
     case 'clock':
       return <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>
+    case 'globe':
+      return <><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></>
     case 'building':
       return <><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></>
     case 'pie':

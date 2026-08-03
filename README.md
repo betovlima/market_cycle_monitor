@@ -4,7 +4,7 @@ Private React frontend for live US equity monitoring. The browser talks only to 
 
 ## Version
 
-`0.1.0`
+`0.1.1`
 
 ## Features
 
@@ -38,8 +38,27 @@ MONITOR_COOKIE_SAMESITE=lax
 
 ## Railway
 
-Configure `VITE_MONITOR_API_BASE_URL` with the HTTPS domain of `market_cycle_monitor_api`. The production API should use a Secure HttpOnly cookie. If the frontend and API are cross-site, configure `MONITOR_COOKIE_SAMESITE=none` and `MONITOR_COOKIE_SECURE=true` in the API.
+Configure `VITE_MONITOR_API_BASE_URL` with the HTTPS domain of `market_cycle_monitor_api`, without a trailing slash. This variable is read at build time, so redeploy the frontend after changing it. The production API should use a Secure HttpOnly cookie. If the frontend and API are cross-site, configure `MONITOR_COOKIE_SAMESITE=none` and `MONITOR_COOKIE_SECURE=true` in the API.
 
 ## Security
 
 Do not create any `VITE_*` variable containing Alpaca credentials, monitor passwords, session secrets or private symbols. Vite variables are public build-time values.
+
+
+## Railway API URL validation
+
+Version 0.1.1 rejects missing API configuration and non-JSON responses instead of allowing the dashboard to fail with a null-data rendering error.
+
+Required frontend variable:
+
+```env
+VITE_MONITOR_API_BASE_URL=https://<market-cycle-monitor-api-domain>
+```
+
+After setting or changing the variable, redeploy the frontend because Vite embeds `VITE_*` values during the build.
+
+## Version 0.1.2
+
+- Dual live clocks for the browser local time and the New York market time.
+- Automatic daylight-saving handling through the `America/New_York` IANA time zone.
+- Distinct market status presentation: green market icon when open and red lock icon when closed.
