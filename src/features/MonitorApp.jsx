@@ -333,7 +333,7 @@ function OverviewPage({
             <span className="feed-badge">{String(overview.feed).toUpperCase()}</span>
           </div>
           <div className="watchlist-grid">
-            {(overview.items || []).map((item) => (
+            {(overview.items || []).slice().sort((a, b) => a.symbol.localeCompare(b.symbol)).map((item) => (
               <button key={item.symbol} type="button" className={`watch-card ${item.symbol === selectedSymbol ? 'selected' : ''}`} onClick={() => onSelectSymbol(item.symbol)}>
                 <div className="watch-card-heading">
                   <strong>{item.symbol}</strong>
