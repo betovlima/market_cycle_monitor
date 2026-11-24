@@ -1,4 +1,4 @@
-# market_cycle_monitor v0.3.1
+# market_cycle_monitor v0.3.2
 
 Private React frontend for live US equity monitoring.
 
@@ -48,3 +48,8 @@ No credentials, symbols, email configuration, passwords or access tokens belong 
 - Adds 32x32, 192x192 and 512x512 PNG icon variants.
 - Keeps the SVG icon as a modern-browser fallback.
 - Adds versioned icon URLs to force browsers and CDNs to refresh cached favicons.
+
+## v0.3.2
+
+- Sorts the Live Chart asset dropdown alphabetically by ticker symbol.
+- Keeps the selected asset, chart and watchlist order unchanged.
