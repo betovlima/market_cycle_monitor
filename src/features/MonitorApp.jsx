@@ -296,7 +296,7 @@ function OverviewPage({
             </div>
             <div className="chart-controls">
               <select value={selectedSymbol} onChange={(event) => onSelectSymbol(event.target.value)} aria-label="Select asset">
-                {(overview.items || []).map((item) => <option key={item.symbol} value={item.symbol}>{item.symbol}</option>)}
+                {(overview.items || []).slice().sort((a, b) => a.symbol.localeCompare(b.symbol)).map((item) => <option key={item.symbol} value={item.symbol}>{item.symbol}</option>)}
               </select>
               <div className="range-tabs" aria-label="Chart range">
                 {RANGE_OPTIONS.map(([id, label]) => (
