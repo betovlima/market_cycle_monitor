@@ -1,4 +1,4 @@
-# market_cycle_monitor v0.3.2
+# market_cycle_monitor v0.3.3
 
 Private React frontend for live US equity monitoring.
 
@@ -53,3 +53,9 @@ No credentials, symbols, email configuration, passwords or access tokens belong 
 
 - Sorts the Live Chart asset dropdown alphabetically by ticker symbol.
 - Keeps the selected asset, chart and watchlist order unchanged.
+
+## v0.3.3
+
+- Live Chart occupies the entire available horizontal space on the Overview page.
+- Market Snapshot (Private Watchlist) is positioned beneath the main chart, with six cards per row on wide screens and fewer columns on smaller displays.
+- The main chart grows with the viewport width; the mobile layout, selected asset and chronological data remain unchanged.
