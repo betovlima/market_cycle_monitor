@@ -137,6 +137,7 @@ button { color: inherit; }
 .logout-button:hover { color: white; border-color: var(--border-strong); }
 
 .monitor-main { width: min(1580px, calc(100% - 34px)); margin: 0 auto; padding: 18px 0 34px; }
+.monitor-main-overview { width: calc(100% - 34px); }
 .overview-stack, .page-stack { display: grid; gap: 14px; }
 .metrics-grid { display: grid; gap: 12px; }
 .five-columns { grid-template-columns: repeat(5, minmax(0, 1fr)); }
@@ -166,7 +167,8 @@ button { color: inherit; }
 .metric-card strong { display: block; margin-top: 4px; font-size: 1.24rem; line-height: 1.05; }
 .metric-card small { display: block; margin-top: 5px; color: var(--muted); font-size: .7rem; }
 
-.overview-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(420px, 1fr); gap: 14px; }
+.overview-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.overview-grid > .panel { min-width: 0; }
 .panel {
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -195,7 +197,7 @@ button { color: inherit; }
 .quote-strip > div { padding: 9px 10px; border: 1px solid rgba(75, 111, 152, .18); border-radius: 9px; background: rgba(11, 28, 48, .65); }
 .quote-strip span { display: block; color: var(--muted); font-size: .62rem; text-transform: uppercase; }
 .quote-strip strong { display: block; margin-top: 3px; font-size: .86rem; }
-.main-chart-wrap { height: 360px; position: relative; }
+.main-chart-wrap { height: clamp(360px, 30vw, 540px); position: relative; }
 .market-chart-canvas { width: 100%; height: 100%; }
 .mini-chart-canvas { width: 100%; height: 52px; margin-top: 6px; }
 .chart-tooltip { min-width: 130px; padding: 9px 10px; display: grid; gap: 4px; border: 1px solid #334d6c; border-radius: 8px; background: rgba(5, 14, 25, .96); box-shadow: 0 12px 26px rgba(0,0,0,.3); }
@@ -205,7 +207,7 @@ button { color: inherit; }
 .chart-loading { grid-auto-flow: column; justify-content: center; gap: 10px; }
 .chart-empty.compact { height: 52px; font-size: .62rem; }
 .feed-badge { padding: 5px 8px; border: 1px solid rgba(53, 201, 143, .28); border-radius: 7px; color: #64e5b3; background: rgba(15, 57, 47, .36); font-size: .64rem; font-weight: 800; }
-.watchlist-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.watchlist-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; }
 .watch-card {
   min-width: 0;
   padding: 11px;

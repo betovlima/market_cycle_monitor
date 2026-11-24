@@ -149,7 +149,7 @@ export function MonitorApp({ session, onLogout, onSessionExpired }) {
         <div className="global-banner stale-banner">Showing the latest cached market snapshot.</div>
       ) : null}
 
-      <main className="monitor-main">
+      <main className={`monitor-main${activeTab === 'overview' ? ' monitor-main-overview' : ''}`}>
         {loading && !overview ? <LoadingPanel /> : null}
         {overview && activeTab === 'overview' ? (
           <OverviewPage
